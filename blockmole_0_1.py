@@ -122,12 +122,23 @@ def print_menu(db_loaded, case_loaded):
 
     return
 
-
-def pretty_table(cursor, casenumber):
+def pretty_table(db_name, case_name):
     # Takes the cursor and tablenumbers and puts the SQLite data into a nice pretty table
-    cursor.execute("SELECT * FROM %s" % casenumber)
-    prettytable = from_db_cursor(cursor)
-    return prettytable
+    freeze = True
+    while freeze == True:
+        connect = sqlite3.connect(str(db_name)+'.db')
+        cursor = connect.cursor()
+        cursor.execute("SELECT * FROM %s" % case_name)
+        prettytable = from_db_cursor(cursor)
+        print(prettytable)
+        print("\n[1] - Back to menu\n")
+        var_menu = user_prompt()
+        if var_menu == "1":
+            freeze = False
+        else:
+            print("Invalid entry! Please try again")
+            time.sleep(1)
+    return 
 
 
 def main():
@@ -151,6 +162,7 @@ def main():
         var_menu = user_prompt()
 
         # User menu
+        
         if var_menu == "1" and db_loaded == False:
             print("\nExisting userfiles:")
             user_show_existing()  
@@ -168,11 +180,12 @@ def main():
             case_loaded = case_create(db_name, case_name)
 
         # Tracking menu
-        elif var_menu == "1" and db_loaded == True and case_loaded == True:
+        elif var_menu == "1" and case_loaded == True:
+            print("Database:")
+            pretty_table(db_name, case_name)
+        elif var_menu == "2" and case_loaded == True:
             pass
-        elif var_menu == "2" and db_loaded == True and case_loaded == True:
-            pass
-        elif var_menu == "3" and db_loaded == True and case_loaded == True:
+        elif var_menu == "3" and case_loaded == True:
             pass
 
         elif var_menu == "0":
