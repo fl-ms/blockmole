@@ -11,6 +11,8 @@ from pyfiglet import figlet_format
 from prettytable import from_db_cursor, PrettyTable
 
 
+# Functions
+
 def clear():
     # Clears the screen entirely
     os.system("cls")
@@ -45,6 +47,7 @@ def user_show_existing():
     return
 
 def user_prompt():
+    # Simple userprompt
     prompt = input("blockmole >> ")
     return prompt
 
@@ -60,6 +63,7 @@ def user_create(username):
     return db_loaded
 
 def case_create(db_name, case_name):
+    # Creates a table (a case) in the given SQLite Database
     connect = sqlite3.connect(str(db_name)+'.db')
     cursor = connect.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS [%s] (
