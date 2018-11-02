@@ -32,6 +32,7 @@ class BitcoinAddress:
         self.data_created_date = 0
     
     def build(address):
+        # Builds the object with given attributes
         api_address = blockexplorer.get_address(address)
         api_transactions = api_address.transactions
         n_tx = api_address.n_tx
@@ -57,6 +58,7 @@ def clear():
     return
 
 def user_prompt():
+    # Standard user input
     prompt = input("blockmole >> ")
     return prompt
 
@@ -96,38 +98,51 @@ def database_delete_existing(dbname):
 
 def case_create(db_name, case_name):
     # Creates a table in the given SQLite DB
-    connect = sqlite3.connect(str(db_name))
-    cursor = connect.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS [%s] (
-                    address_number INTEGER PRIMARY KEY,
-                    address TEXT,
-                    n_tx FLOAT,
-                    total_received FLOAT,
-                    total_sent FLOAT,
-                    last_tx TEXT,
-                    date_added TEXT,
-                    balance FLOAT,
-                    comment TEXT);""" % case_name)
-    connect.commit()
-    connect.close()
-    print("Case %s successfully created!" % case_name)
-    time.sleep(1)
-    return True
-
-def case_delete(db_name, case_name):
-    connect = sqlite3.connect(str(db_name))
-    cursor = connect.cursor()
-    try:
-        cursor.execute("""DROP TABLE [%s]""" % case_name)
+    try:  
+        connect = sqlite3.connect(str(db_name))
+        cursor = connect.cursor()
+        cursor.execute("""CREATE TABLE IF NOT EXISTS [%s] (
+                        address_number INTEGER PRIMARY KEY,
+                        address TEXT,
+                        n_tx FLOAT,
+                        total_received FLOAT,
+                        total_sent FLOAT,
+                        last_tx TEXT,
+                        date_added TEXT,
+                        balance FLOAT,
+                        comment TEXT);""" % case_name)
         connect.commit()
         connect.close()
-        print("Case %s successfully deleted!" % case_name)
-        time.sleep(1)
+        return True
     except:
-        print("Case %s not existing!" % case_name)
-        time.sleep(1)
-    return False
+        return False
+    return {"case_loaded": True, "case_name": case_name}
 
+
+def case_delete(db_name, case_name):
+    # Deletes a table in given database
+    connect = sqlite3.connect(str(db_name))
+    cursor = connect.cursor()
+    cursor.execute("""DROP TABLE [%s]""" % case_name)
+    connect.commit()
+    connect.close()
+    print("Case %s successfully deleted!" % case_name)
+    time.sleep(1)
+      
+
+def case_show_existing(dbname):
+    # Parses the given SQL File for tables and returns a clean list of tablenames
+    connect = sqlite3.connect(dbname)
+    cursor = connect.cursor()
+    tables = cursor.execute("SELECT tbl_name FROM sqlite_master")
+    contents = []
+    for row in tables.fetchall():
+        string = str(row)
+        string2 = string.replace("(\'", "")
+        string3 = string2.replace("\',)", "")
+        contents.append(string3)
+    connect.close()
+    return contents
 
 #######################################################
 ## Printfunctions
@@ -172,10 +187,10 @@ def print_main_menu(db_loaded, case_loaded):
         print("[4] - Show addresses with new TXs\n")
         print("[5] - Unload the casefile\n")
         print("[0] - Exit Blockmole\n")
-
     return
 
 def print_load_database():
+    # Launches a menu to load an existing database
     freeze = True
     while freeze == True:
         clear()
@@ -204,6 +219,7 @@ def print_load_database():
                 return {"db_loaded": False, "db_name": ""}
 
 def print_create_database():
+    # Launches a menu to create and load a new database
     clear()
     print_header()
     print("\nPlease enter a username: \n")
@@ -223,6 +239,7 @@ def print_create_database():
         return {"db_loaded": True, "db_name": str(db_name)}
 
 def print_delete_database():
+    # Launches a menu to delete a database
     freeze = True
     while freeze == True:
         clear()
@@ -251,12 +268,101 @@ def print_delete_database():
                 return {"db_loaded": False, "db_name": ""}
 
 def pretty_table(firstrow, contents):
+    # Takes two lists and returns a pretty table
     t = PrettyTable(firstrow)
     for row in contents:
         t.add_row(row)
     return t
 
+def print_load_tables(dbname):
+    # Prints all existing tables from given SQLite DB and lets the user choose one
+    freeze = True
+    while freeze == True:
+        clear()
+        contents = case_show_existing(dbname)
+        print_header()
+        print("\n### Existing casefiles in this database ###\n")
+        count = 1
+        for i in contents:
+            print("["+str(count)+"] - " + str(i))
+            count += 1
+        print("\n")
+        print("[0] - Back to menu\n")
+        case_menu = user_prompt()
+        if case_menu == "0":
+            return {"case_loaded": False, "case_name": ""}
+        else:
+            try: 
+                case_name = str(contents[int(case_menu)-1])
+##              ### INSERT Object generator from SQL here
+                print("### Database loaded ###")
+                time.sleep(1)
+                return {"case_loaded": True, "case_name": str(case_name)}
+            except:
+                print("### Case not existing ###")
+                time.sleep(1)
+                return {"case_loaded": False, "case_name": ""}
 
+def print_create_table(dbname):
+    freeze = True
+    while freeze == True:
+        clear()
+        print_header()
+        print("\n Please enter a casenumber: \n")
+        case_name = user_prompt()
+        try:  
+            connect = sqlite3.connect(str(dbname))
+            cursor = connect.cursor()
+            cursor.execute("""CREATE TABLE [%s] (
+                            address_number INTEGER PRIMARY KEY,
+                            address TEXT,
+                            n_tx FLOAT,
+                            total_received FLOAT,
+                            total_sent FLOAT,
+                            last_tx TEXT,
+                            date_added TEXT,
+                            balance FLOAT,
+                            comment TEXT);""" % case_name)
+            connect.commit()
+            connect.close()
+            print("Case successfully created!")
+            time.sleep(1)
+            return {"case_loaded": True, "case_name": case_name}
+        except:
+            print("Case is already existing! Please load your case!")
+            time.sleep(1)
+            return {"case_loaded": False, "case_name": ""}
+
+def print_delete_tables(dbname):
+    # Prints all existing tables from given SQLite DB and lets the user choose one
+    freeze = True
+    while freeze == True:
+        clear()
+        contents = case_show_existing(dbname)
+        print_header()
+        print("\n### Existing casefiles in this database ###")
+        print("Please choose which file to delete: \n")
+        count = 1
+        for i in contents:
+            print("["+str(count)+"] - " + str(i))
+            count += 1
+        print("\n")
+        print("[0] - Back to menu\n")
+        case_menu = user_prompt()
+        if case_menu == "0":
+            return
+        else:
+            try: 
+                case_name = str(contents[int(case_menu)-1])
+                case_delete(dbname, case_name)
+                time.sleep(1)
+                return 
+            except:
+                print("### Case not existing ###")
+                time.sleep(1)
+                return
+
+    
 #######################################################
 ## Main
 #######################################################
@@ -293,12 +399,53 @@ def main():
                 result = print_delete_database()
                 db_loaded = result["db_loaded"]
                 db_name = result["db_name"] 
+            else:
+                print("Invalid entry, retry!")
+                time.sleep(1)
 
+        # Case menu
         elif db_loaded == True and case_loaded == False:
-
+            if var_menu == "1":
+                result = print_load_tables(db_name)
+                case_loaded = result["case_loaded"]
+                case_name = result["case_name"]
+            elif var_menu == "2":
+                result = print_create_table(db_name)
+                case_loaded = result["case_loaded"]
+                case_name = result["case_name"]
+            elif var_menu == "3":
+                print_delete_tables(db_name)
+            elif var_menu == "4":
+                db_loaded = False
+                db_name = ""
+                print("Userfile not loaded any more. Please select a userfile...")
+                time.sleep(2)
+            else:
+                print("Invalid entry, retry!")
+                time.sleep(1)
+                
+        # Main menu Tracking
+        elif db_loaded == True and case_loaded == True:
+            if var_menu == "1":
+                pass
+            elif var_menu == "2":
+                pass
+            elif var_menu == "3":
+                pass
+            elif var_menu == "4":
+                pass
+            elif var_menu == "5":
+                case_loaded = False
+                case_name = ""
+            else:
+                print("Invalid entry, retry!")
+                time.sleep(1)
 
         elif var_menu == "0":
             program_active = False
+        else:
+            print("Invalid entry, retry!")
+            time.sleep(1)
         
 
 #######################################################
