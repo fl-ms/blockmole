@@ -21,7 +21,7 @@ class BitcoinAddress:
     """
     This is a class for Bitcoinaddresses with all relevant data stored
     """
-    def __init__(self, address, n_tx, total_received, total_sent, balance, last_tx_date, data_created_date):
+    def __init__(self, address, n_tx, total_received, total_sent, balance, last_tx_date, data_created_date, comment):
         
         self.address = address
         self.n_tx = n_tx
@@ -30,8 +30,9 @@ class BitcoinAddress:
         self.balance = balance
         self.last_tx_date = last_tx_date
         self.data_created_date = 0
+        self.comment = comment
     
-    def build(address):
+    def build(address, comment):
         # Builds the object with given attributes
         api_address = blockexplorer.get_address(address)
         api_transactions = api_address.transactions
@@ -41,7 +42,7 @@ class BitcoinAddress:
         balance = api_address.final_balance
         last_tx_date = api_transactions[-1].time
         data_created_date = 0
-        final_object = BitcoinAddress(address, n_tx, total_received, total_sent, balance, last_tx_date, data_created_date)
+        final_object = BitcoinAddress(address, n_tx, total_received, total_sent, balance, last_tx_date, data_created_date, comment)
         return final_object
 
 #######################################################
@@ -61,6 +62,13 @@ def user_prompt():
     # Standard user input
     prompt = input("blockmole >> ")
     return prompt
+
+def sql_string_cleanup(string):
+    # Takes a given SQL string and returns it clean
+    string2 = str(string)
+    string3 = string2.replace("(\'", "")
+    string4 = string3.replace("\',)", "")
+    return string4
 
 #######################################################
 ## Databasefunctions:
@@ -137,12 +145,41 @@ def case_show_existing(dbname):
     tables = cursor.execute("SELECT tbl_name FROM sqlite_master")
     contents = []
     for row in tables.fetchall():
-        string = str(row)
-        string2 = string.replace("(\'", "")
-        string3 = string2.replace("\',)", "")
-        contents.append(string3)
+        string = sql_string_cleanup(row)
+        contents.append(string)
     connect.close()
     return contents
+
+def case_write_into_db(db_name, case_name, address_list):
+    pass
+
+def case_load_into_object(dbname, case_name):
+    # Loads SQLite data into a list of python objects
+    connect = sqlite3.connect(dbname)
+    cursor = connect.cursor()
+    i = 0
+    address_list = []
+    try:
+        for row in cursor.execute("SELECT * FROM [%s]" % case_name):
+            address = sql_string_cleanup(cursor.execute("SELECT address FROM [%s] WHERE rowid = %s" % case_name, i))
+            n_tx = sql_string_cleanup(cursor.execute("SELECT n_tx FROM [%s] WHERE rowid = %s" % case_name, i))
+            total_received = sql_string_cleanup(cursor.execute("SELECT total_received FROM [%s] WHERE rowid = %s" % case_name, i))
+            total_sent = sql_string_cleanup(cursor.execute("SELECT total_sent FROM [%s] WHERE rowid = %s" % case_name, i))
+            last_tx = sql_string_cleanup(cursor.execute("SELECT last_tx FROM [%s] WHERE rowid = %s" % case_name, i))
+            balance = sql_string_cleanup(cursor.execute("SELECT balance FROM [%s] WHERE rowid = %s" % case_name, i))
+            date_added = sql_string_cleanup(cursor.execute("SELECT date_added FROM [%s] WHERE rowid = %s" % case_name, i))
+            comment = sql_string_cleanup(cursor.execute("SELECT comment FROM [%s] WHERE rowid = %s" % case_name, i))
+            
+            i += 1
+
+            final_object = BitcoinAddress(address, n_tx, total_received, total_sent, balance, last_tx, date_added, comment)
+            address_list.append(final_object)
+    except:
+        print("Error loading the database into objects")
+
+    connect.close()
+    return address_list
+
 
 #######################################################
 ## Printfunctions
@@ -257,7 +294,7 @@ def print_delete_database():
             return {"db_loaded": False, "db_name": ""}
         else:
             try: 
-                db_name = str(files[int(load_menu)-1])
+                db_name = str(files[int(delete_menu)-1])
                 database_delete_existing(db_name)
                 print("### Database successfully deleted! ###")
                 time.sleep(1)
@@ -294,10 +331,10 @@ def print_load_tables(dbname):
         else:
             try: 
                 case_name = str(contents[int(case_menu)-1])
-##              ### INSERT Object generator from SQL here
+                address_list = case_load_into_object(dbname, case_name)
                 print("### Database loaded ###")
                 time.sleep(1)
-                return {"case_loaded": True, "case_name": str(case_name)}
+                return {"case_loaded": True, "case_name": str(case_name), "address_list": address_list}
             except:
                 print("### Case not existing ###")
                 time.sleep(1)
@@ -373,6 +410,8 @@ def main():
     case_loaded = False
     db_name = ""
     case_name = ""
+    # a list of Bitcoinaddressobjects:
+    address_list = []
 
     while program_active == True:
         clear()
@@ -409,6 +448,7 @@ def main():
                 result = print_load_tables(db_name)
                 case_loaded = result["case_loaded"]
                 case_name = result["case_name"]
+                address_list = result["address_list"]
             elif var_menu == "2":
                 result = print_create_table(db_name)
                 case_loaded = result["case_loaded"]
@@ -423,7 +463,7 @@ def main():
             else:
                 print("Invalid entry, retry!")
                 time.sleep(1)
-                
+
         # Main menu Tracking
         elif db_loaded == True and case_loaded == True:
             if var_menu == "1":
