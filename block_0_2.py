@@ -25,7 +25,7 @@ class BitcoinAddress:
         
         self.address = address
         self.n_tx = n_tx
-        self. total_received = total_received
+        self.total_received = total_received
         self.total_sent = total_sent
         self.balance = balance
         self.last_tx_date = last_tx_date
@@ -399,6 +399,34 @@ def print_delete_tables(dbname):
                 time.sleep(1)
                 return
 
+def print_add_address():
+    # Takes an address and a comment and returns a bitcoinaddressobject
+    clear()
+    print_header()
+    print("Please enter a bitcoinaddress: \n")
+    address_input = user_prompt()
+    address_comment = ""
+    print("Feel free to enter a comment to this address: \n")
+    address_comment = user_prompt()
+    final_object = BitcoinAddress.build(address_input, address_comment)
+    return final_object
+
+def print_address_existing(address_list):
+    # Takes the addresslist and prints a nice table with the items in it
+    freeze = True
+    clear()
+    print_header()
+    while freeze == True:
+        t = PrettyTable(["Address", "No. of TX", "t.received", "t.sent", "Balance", "Last TX", "Comment"])
+        for i in address_list:
+            t.add_row([str(i.address), str(i.n_tx), str(i.total_received), str(i.total_sent), str(i.balance), str(i.last_tx_date), str(i.comment)])
+        print("\n")
+        print(t)
+        print("[0] - Back to main menu")
+        if user_prompt() == "0":
+            freeze = False
+        else:
+            print("Invalid entry, retry!")
     
 #######################################################
 ## Main
@@ -438,6 +466,9 @@ def main():
                 result = print_delete_database()
                 db_loaded = result["db_loaded"]
                 db_name = result["db_name"] 
+
+            elif var_menu == "0":
+                program_active = False
             else:
                 print("Invalid entry, retry!")
                 time.sleep(1)
@@ -460,6 +491,9 @@ def main():
                 db_name = ""
                 print("Userfile not loaded any more. Please select a userfile...")
                 time.sleep(2)
+            
+            elif var_menu == "0":
+                program_active = False
             else:
                 print("Invalid entry, retry!")
                 time.sleep(1)
@@ -467,9 +501,10 @@ def main():
         # Main menu Tracking
         elif db_loaded == True and case_loaded == True:
             if var_menu == "1":
-                pass
+                print_address_existing(address_list)
             elif var_menu == "2":
-                pass
+                new_object = print_add_address()
+                address_list.append(new_object)
             elif var_menu == "3":
                 pass
             elif var_menu == "4":
@@ -477,12 +512,13 @@ def main():
             elif var_menu == "5":
                 case_loaded = False
                 case_name = ""
+
+            elif var_menu == "0":
+                program_active = False
             else:
                 print("Invalid entry, retry!")
                 time.sleep(1)
 
-        elif var_menu == "0":
-            program_active = False
         else:
             print("Invalid entry, retry!")
             time.sleep(1)
